@@ -1,13 +1,10 @@
 'use strict'
 const debug = require('debug')('animesubbot')
 const Telegraf = require('telegraf')
-const dateFormat = require('dateformat')
 
 const commandArgsMiddleware = require('./lib/commandArgs')
 const Utils = require('./lib/utils')
 const Config = require('./lib/config')
-
-const Anime = new (require('./animes/Anime'))()
 
 const database = require('./lib/database')
 const AnimeDB = new database(database.AnimesDB)

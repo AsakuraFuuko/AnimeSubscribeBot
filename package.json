@@ -2,6 +2,7 @@
   "dependencies": {
     "dateformat": "^2.0.0",
     "debug": "^2.6.3",
+    "enum": "^2.4.0",
     "js-yaml": "^3.8.2",
     "log": "^1.4.0",
     "nedb": "^1.8.0",
