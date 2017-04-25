@@ -44,7 +44,11 @@ class Subscribe {
                         let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
                         animes.push(str)
                     }
-                    return ctx.reply(animes.join('\n'), { parse_mode: 'HTML' })
+                    if (animes.length > 0) {
+                        return ctx.reply(animes.join('\n'), { parse_mode: 'HTML' })
+                    } else {
+                        return ctx.reply('没有结果')
+                    }
                 })
             } else {
                 this.fetchAnimes(ctx)
@@ -248,38 +252,74 @@ class Subscribe {
         })
     }
 
-    updateLoop() {
-        this.db.fetchAllUserId().then((user_ids) => {
-            for (let user_id of user_ids) {
-                let results = []
-                this.db.getAllAnimes(user_id).then((animes) => {
-                    for (let anime of animes) {
-                        this.fetchAnime(anime)
-                    }
-                })
-                return ctx.reply(results.join('\n'), { parse_mode: 'HTML' })
+    getAnimeLoop(promise, fn) {
+        var self = this
+        return promise.then(fn).then(function (wrapper) {
+            return !wrapper.done ? self.getAnimeLoop(Promise.resolve(wrapper), fn) : wrapper;
+        });
+    }
+
+    getAnime(wrapper) {
+        return Anime.fetchRSS(wrapper.keywords + ' ' + ('0' + (wrapper.ep + 1)).slice(-2)).then((objs) => {
+            // debug(objs)
+            var animes = []
+            for (let anime of objs) {
+                let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
+                animes.push(str)
+            }
+            return animes
+        }).then((animes) => {
+            let results = wrapper.results
+            results = results.concat(animes)
+            return {
+                keywords: wrapper.keywords,
+                ep: wrapper.ep + 1,
+                results: results,
+                anime_id: wrapper.anime_id,
+                done: animes.length <= 0
             }
         })
     }
 
-    fetchAnime(anime) {
-        async (anime) => {
-            var animes = []
-            for (let i = anime.episode; ; i++) {
-                let objs = await Anime.fetchRSS(anime.keywords + ' ' + i)
-                debug(objs)
-                for (let anime of objs) {
-                    let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
-                    animes.push(str)
+    fetchAnime(user_id) {
+        var id = user_id
+        return this.db.getAllAnimes(user_id).then((animes) => {
+            return Promise.all(animes.map((anime) => {
+                return this.getAnimeLoop(Promise.resolve({
+                    keywords: anime.keywords,
+                    ep: anime.episode,
+                    results: [],
+                    anime_id: anime._id,
+                    done: false
+                }), this.getAnime)
+            })).then((animes) => {
+                return { user_id: id, animes: animes }
+            })
+        })
+    }
+
+    updateLoop() {
+        this.db.fetchAllUserId().then((users) => {
+            Promise.all(Array.from(new Set(users.map(item => item.user_id))).map((user_id) => {
+                return this.fetchAnime(user_id)
+            })).then((results) => {
+                for (let result of results) {
+                    for (let anime of result.animes) {
+                        let text = Array.from(new Set(anime.results)).join('\n')
+                        if (anime.results.length > 0) {
+                            this.db.updateAnimeEpisode(anime.anime_id, anime.ep - 1)
+                            this.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' })
+                        }
+                    }
                 }
-            }
-        }
+            })
+        })
     }
 
     startloop() {
         console.log('[Subscribe] start update loop')
-        this.updateLoop()
-        // setInterval(this.updateLoop, 60 * 60 * 1000) // 1小时
+        // this.updateLoop()
+        setInterval(this.updateLoop, 60 * 60 * 1000) // 1小时
     }
 }
 

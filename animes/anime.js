@@ -10,7 +10,7 @@ class Anime {
         return new Promise((resolve, reject) => {
             Request.get(encodeURI(util.format(Anime.url, query)), (err, res, body) => {
                 if (!err && res.statusCode == 200) {
-                    debug(body)
+                    // debug(body)
                     this._parse(body).then((results) => { resolve(results) })
                 } else {
                     reject(err)
