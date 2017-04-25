@@ -5,7 +5,7 @@ const Telegraf = require('telegraf')
 const { Router, Extra, memorySession, Markup } = require('telegraf')
 require('enum').register()
 
-const Anime = new (require('./Anime'))()
+const Anime = new (require('./anime'))()
 
 const simpleRouter = new Router((ctx) => {
     if (!ctx.callbackQuery.data) {
