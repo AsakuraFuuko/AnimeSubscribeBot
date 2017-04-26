@@ -37,6 +37,7 @@ class Subscribe {
         // other start
         this.tgbot.command('start', (ctx) => {
             console.log('start', ctx.from)
+            this.db.users.setNotification(ctx.from.id, true)
             ctx.reply('管理订阅 /anime \n[/anime 关键字]可以搜索动画')
         })
 
