@@ -64,11 +64,7 @@ class Subscribe {
                 })
             } else {
                 if (ctx.chat.type != 'private') {
-                    ctx.telegram.sendMessage(ctx.from.id, '喵~').then(() => {
-                        this.fetchAnimes(ctx)
-                    }).catch(() => {
-                        ctx.reply('先私聊发送/start')
-                    })
+                    ctx.reply('请输入关键字，订阅管理私聊可用')
                 } else {
                     this.fetchAnimes(ctx)
                 }
