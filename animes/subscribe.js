@@ -330,7 +330,7 @@ class Subscribe {
     fetchAnime(user_id) {
         var self = this
         var id = user_id
-        console.log('[Subscribe] fetch user(%i) animes', user_id)
+        console.log(`[Subscribe] fetch user(${user_id}) animes`)
         return self.db.animes.getAllAnimes(user_id).then((animes) => {
             return Promise.all(animes.map((anime) => {
                 return self.getAnimeLoop(Promise.resolve({
