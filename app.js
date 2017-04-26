@@ -6,9 +6,8 @@ const commandArgsMiddleware = require('./lib/commandArgs')
 const Utils = require('./lib/utils')
 const Config = require('./lib/config')
 
-const database = require('./lib/database')
-const AnimesDB = new database(database.AnimesDB)
-const UsersDB = new database(database.UsersDB)
+const AnimesDB = new (require('./lib/db/animes'))()
+const UsersDB = new (require('./lib/db/users'))()
 
 const Subscribe = require('./animes/subscribe')
 

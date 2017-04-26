@@ -336,26 +336,24 @@ class Subscribe {
     }
 
     updateLoop(self) {
-        self.db.animes.fetchAllUserId().then((users) => {
-            Promise.all(Array.from(new Set(users.map(item => item.user_id))).map((user_id) => {
-                return self.db.users.isNotification(user_id).then((status) => {
-                    if (status) {
-                        return self.fetchAnime(user_id)
-                    } else {
-                        return { user_id: user_id, animes: [] }
-                    }
-                })
-            })).then((results) => {
-                for (let result of results) {
-                    for (let anime of result.animes) {
-                        let text = Array.from(new Set(anime.results)).join('\n')
-                        if (anime.results.length > 0) {
-                            self.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
-                                self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
-                        }
+        self.db.users.fetchAllUserId().then((users) => {
+            return Promise.all(users.map((user) => {
+                if (user.status) {
+                    return self.fetchAnime(user.user_id)
+                } else {
+                    return { user_id: user.user_id, animes: [] }
+                }
+            }))
+        }).then((results) => {
+            for (let result of results) {
+                for (let anime of result.animes) {
+                    let text = Array.from(new Set(anime.results)).join('\n')
+                    if (anime.results.length > 0) {
+                        self.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
+                            self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
                     }
                 }
-            })
+            }
         })
     }
 
