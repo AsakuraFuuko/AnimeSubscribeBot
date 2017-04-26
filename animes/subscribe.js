@@ -3,6 +3,7 @@ const debug = require('debug')('subscribe')
 const dateFormat = require('dateformat')
 const Telegraf = require('telegraf')
 const { Router, Extra, memorySession, Markup } = require('telegraf')
+const Utils = require('../lib/utils')
 require('enum').register()
 
 const Anime = new (require('./anime'))()
@@ -41,6 +42,13 @@ class Subscribe {
 
         this.tgbot.command('debug', (ctx) => {
             ctx.reply(ctx.update.message)
+        })
+
+        this.tgbot.command('token', (ctx) => {
+            let user_id = ctx.from.id
+            this.db.users.getTokenByUserID(user_id).then((token) => {
+                ctx.reply(`你的token是: ${token}`)
+            })
         })
         // other end
 
@@ -296,12 +304,13 @@ class Subscribe {
     }
 
     getAnime(wrapper) {
+        console.log('[Subscribe] fetch anime %s[%i]', wrapper.title, wrapper.ep + 1)
         return Anime.fetchRSS(wrapper.keywords + ' ' + ('0' + (wrapper.ep + 1)).slice(-2)).then((objs) => {
             // debug(objs)
             var animes = []
             for (let anime of objs) {
                 let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
-                animes.push(str)
+                animes.push({ text: str, data: anime })
             }
             return animes
         }).then((animes) => {
@@ -310,6 +319,7 @@ class Subscribe {
             return {
                 keywords: wrapper.keywords,
                 ep: wrapper.ep + 1,
+                title: wrapper.title,
                 results: results,
                 anime_id: wrapper.anime_id,
                 done: animes.length <= 0
@@ -320,11 +330,13 @@ class Subscribe {
     fetchAnime(user_id) {
         var self = this
         var id = user_id
+        console.log('[Subscribe] fetch user(%i) animes', user_id)
         return self.db.animes.getAllAnimes(user_id).then((animes) => {
             return Promise.all(animes.map((anime) => {
                 return self.getAnimeLoop(Promise.resolve({
                     keywords: anime.keywords,
                     ep: anime.episode,
+                    title: anime.title,
                     results: [],
                     anime_id: anime._id,
                     done: false
@@ -347,8 +359,11 @@ class Subscribe {
         }).then((results) => {
             for (let result of results) {
                 for (let anime of result.animes) {
-                    let text = Array.from(new Set(anime.results)).join('\n')
+                    let text = Array.from(new Set(anime.results.map((result) => result.text))).join('\n')
                     if (anime.results.length > 0) {
+                        for (let obj of Utils.UniqueBy(anime.results.map((result) => result.data), (item) => item.title)) {
+                            this.db.episodes.addEpisode(result.user_id, anime.title, obj.title, obj.torrent)
+                        }
                         self.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
                             self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
                     }

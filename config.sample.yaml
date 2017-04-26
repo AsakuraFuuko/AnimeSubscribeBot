@@ -1,3 +1,7 @@
 tgbot:
   token: 'xxxxxxx'
   username: 'xxxx_bot'
+server:
+  host: 127.0.0.1
+  port: 12300
+proxy: 'http://localhost:1087'

@@ -5,10 +5,17 @@ const parser = require('rss-parser')
 const util = require('util')
 const dateFormat = require('dateformat')
 
+const Config = require('../lib/config')
+
 class Anime {
     fetchRSS(query) {
         return new Promise((resolve, reject) => {
-            Request.get(encodeURI(util.format(Anime.url, query)), (err, res, body) => {
+            if (Config.proxy) {
+                var request = Request.defaults({ 'proxy': Config.proxy });
+            } else {
+                var request = Request
+            }
+            request.get(encodeURI(util.format(Anime.url, query)), (err, res, body) => {
                 if (!err && res.statusCode == 200) {
                     // debug(body)
                     this._parse(body).then((results) => { resolve(results) })
@@ -57,6 +64,6 @@ class Anime {
     }
 }
 
-Anime.url = "http://dmhy.ricterz.me/topics/rss/rss.xml?keyword=%s&sort_id=2"
+Anime.url = "https://share.dmhy.org/topics/rss/rss.xml?keyword=%s&sort_id=2"
 
 module.exports = Anime
