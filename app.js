@@ -19,17 +19,6 @@ tgbot.use(commandArgsMiddleware())
 
 const sub = new Subscribe(tgbot, AnimeDB)
 
-// other start
-tgbot.command('start', (ctx) => {
-    console.log('start', ctx.from)
-    ctx.reply('喵~')
-})
-
-tgbot.command('debug', (ctx) => {
-    ctx.reply(ctx.update.message)
-})
-// other end
-
 tgbot.catch((err) => {
     console.log('Error', err)
 })

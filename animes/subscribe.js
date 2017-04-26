@@ -33,6 +33,17 @@ class Subscribe {
         this.tgbot.use(Telegraf.memorySession())
         this.tgbot.on('callback_query', simpleRouter.middleware())
 
+        // other start
+        this.tgbot.command('start', (ctx) => {
+            console.log('start', ctx.from)
+            ctx.reply('管理订阅 /anime \n[/anime 关键字]可以搜索动画')
+        })
+
+        this.tgbot.command('debug', (ctx) => {
+            ctx.reply(ctx.update.message)
+        })
+        // other end
+
         this.tgbot.command('anime', (ctx) => {
             var obj = ctx.state.command
             debug(obj)
@@ -40,7 +51,8 @@ class Subscribe {
                 Anime.fetchRSS(obj.args.join(' ')).then((objs) => {
                     debug(objs)
                     var animes = []
-                    for (let anime of objs) {
+                    for (let i = 0; i < Math.min(objs.length, 10); i++) {
+                        let anime = objs[i]
                         let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
                         animes.push(str)
                     }
@@ -51,6 +63,13 @@ class Subscribe {
                     }
                 })
             } else {
+                if (ctx.chat.type != 'private') {
+                    ctx.telegram.sendMessage(ctx.from.user_id, '喵~').then(() => {
+                        this.fetchAnimes(ctx)
+                    }).catch(() => {
+                        ctx.reply('先私聊发送/start')
+                    })
+                }
                 this.fetchAnimes(ctx)
             }
         })
@@ -307,8 +326,8 @@ class Subscribe {
                     for (let anime of result.animes) {
                         let text = Array.from(new Set(anime.results)).join('\n')
                         if (anime.results.length > 0) {
-                            this.db.updateAnimeEpisode(anime.anime_id, anime.ep - 1)
-                            this.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' })
+                            this.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
+                                this.db.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
                         }
                     }
                 }
@@ -318,7 +337,7 @@ class Subscribe {
 
     startloop() {
         console.log('[Subscribe] start update loop')
-        // this.updateLoop()
+        this.updateLoop()
         setInterval(this.updateLoop, 60 * 60 * 1000) // 1小时
     }
 }
