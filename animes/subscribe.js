@@ -249,12 +249,12 @@ class Subscribe {
                 array.push(Markup.callbackButton('添加一个动画', `anime_add:${user_id}`))
                 if (is_cancle) {
                     ctx.editMessageText(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
-                        wrap: (btn, index, currentRow) => currentRow.length >= (index + 1) / 2
+                        wrap: (btn, index, currentRow) => currentRow.length >= 2
                     }).extra())
                 }
                 else {
                     ctx.reply(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
-                        wrap: (btn, index, currentRow) => currentRow.length >= (index + 1) / 2
+                        wrap: (btn, index, currentRow) => currentRow.length >= 2
                     }).extra())
                 }
             } else {
