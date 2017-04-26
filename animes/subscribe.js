@@ -304,7 +304,7 @@ class Subscribe {
     }
 
     getAnime(wrapper) {
-        console.log('[Subscribe] fetch anime %s[%i]', wrapper.title, wrapper.ep + 1)
+        console.log(`[Subscribe] fetch anime ${wrapper.title} [${wrapper.ep + 1}]`)
         return Anime.fetchRSS(wrapper.keywords + ' ' + ('0' + (wrapper.ep + 1)).slice(-2)).then((objs) => {
             // debug(objs)
             var animes = []
