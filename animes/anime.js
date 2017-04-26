@@ -10,7 +10,7 @@ const Config = require('../lib/config')
 class Anime {
     fetchRSS(query) {
         return new Promise((resolve, reject) => {
-            if (Config.proxy) {
+            if (Config.proxy != '') {
                 var request = Request.defaults({ 'proxy': Config.proxy });
             } else {
                 var request = Request
