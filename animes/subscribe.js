@@ -74,7 +74,7 @@ class Subscribe {
                     m.inlineKeyboard([
                         m.callbackButton('修改名称', `anime_edit2:title:${anime._id}`),
                         m.callbackButton('修改关键字', `anime_edit2:keywords:${anime._id}`),
-                        m.callbackButton('修改当前集数', `anime_edit2:episudo:${anime._id}`),
+                        m.callbackButton('修改当前集数', `anime_edit2:episode:${anime._id}`),
                         m.callbackButton('删除这个订阅', `anime_del:${anime._id}`),
                         m.callbackButton('返回', `anime_edit2:cancle`)
                     ], {
