@@ -7,7 +7,8 @@ const Utils = require('./lib/utils')
 const Config = require('./lib/config')
 
 const database = require('./lib/database')
-const AnimeDB = new database(database.AnimesDB)
+const AnimesDB = new database(database.AnimesDB)
+const UsersDB = new database(database.UsersDB)
 
 const Subscribe = require('./animes/subscribe')
 
@@ -17,7 +18,7 @@ const tgbot = new Telegraf(Config.tgbot.token, {
 
 tgbot.use(commandArgsMiddleware())
 
-const sub = new Subscribe(tgbot, AnimeDB)
+const sub = new Subscribe(tgbot, { animes: AnimesDB, users: UsersDB })
 
 tgbot.catch((err) => {
     console.log('Error', err)

@@ -85,7 +85,7 @@ class Subscribe {
 
         simpleRouter.on('anime_edit', (ctx) => {
             let user_id = ctx.from.id
-            this.db.getAnime(ctx.state.args[0]).then((anime) => {
+            this.db.animes.getAnime(ctx.state.args[0]).then((anime) => {
                 ctx.editMessageText(`<code>动画 「${anime.title}」</code>\n关键字「${anime.keywords}」\n当前集数: ${anime.episode}`, Extra.HTML().markup((m) =>
                     m.inlineKeyboard([
                         m.callbackButton('修改名称', `anime_edit2:title:${anime._id}`),
@@ -110,7 +110,7 @@ class Subscribe {
             let user_id = ctx.from.id
             switch (ctx.state.args[0]) {
                 case 'title':
-                    this.db.getAnime(ctx.state.args[1]).then((anime) => {
+                    this.db.animes.getAnime(ctx.state.args[1]).then((anime) => {
                         ctx.editMessageText(`<code>修改动画 「${anime.title}」</code>\n请输入新的名称`, { parse_mode: 'HTML' })
                         if (!ctx.session.hasOwnProperty('anime')) {
                             ctx.session.anime = {}
@@ -122,7 +122,7 @@ class Subscribe {
                     })
                     break;
                 case 'keywords':
-                    this.db.getAnime(ctx.state.args[1]).then((anime) => {
+                    this.db.animes.getAnime(ctx.state.args[1]).then((anime) => {
                         ctx.editMessageText(`<code>修改动画 「${anime.title}」</code>\n当前关键字「${anime.keywords}」\n请输入新的关键字`, { parse_mode: 'HTML' })
                         if (!ctx.session.hasOwnProperty('anime')) {
                             ctx.session.anime = {}
@@ -135,7 +135,7 @@ class Subscribe {
                     })
                     break;
                 case 'episode':
-                    this.db.getAnime(ctx.state.args[1]).then((anime) => {
+                    this.db.animes.getAnime(ctx.state.args[1]).then((anime) => {
                         ctx.editMessageText(`<code>修改动画 「${anime.title}」</code>\n当前集数「${anime.episode}」\n请输入新的集数`, { parse_mode: 'HTML' })
                         if (!ctx.session.hasOwnProperty('anime')) {
                             ctx.session.anime = {}
@@ -155,7 +155,7 @@ class Subscribe {
 
         simpleRouter.on('anime_del', (ctx) => {
             let user_id = ctx.from.id
-            this.db.getAnime(ctx.state.args[0]).then((anime) => {
+            this.db.animes.getAnime(ctx.state.args[0]).then((anime) => {
                 ctx.editMessageText(`是否删除订阅动画 「${anime.title}」`, Markup.inlineKeyboard([
                     Markup.callbackButton('确定', `anime_del2:ok:${anime._id}`),
                     Markup.callbackButton('取消', `anime_del2:cancle`)
@@ -172,7 +172,18 @@ class Subscribe {
         simpleRouter.on('anime_del2', (ctx) => {
             let user_id = ctx.from.id
             if (ctx.state.args[0] === 'ok') {
-                this.db.removeAnime(ctx.state.args[1])
+                this.db.animes.removeAnime(ctx.state.args[1])
+            }
+            this.switchNone(ctx)
+            this.fetchAnimes(ctx, true)
+        })
+
+        simpleRouter.on('anime_notify', (ctx) => {
+            let user_id = ctx.from.id
+            if (ctx.state.args[0] === 'on') {
+                this.db.users.setNotification(parseInt(ctx.state.args[1]), true)
+            } else if (ctx.state.args[0] === 'off') {
+                this.db.users.setNotification(parseInt(ctx.state.args[1]), false)
             }
             this.switchNone(ctx)
             this.fetchAnimes(ctx, true)
@@ -189,7 +200,7 @@ class Subscribe {
                             ctx.reply('请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720p)')
                         } else if (!anime.keywords) {
                             anime.keywords = ctx.update.message.text
-                            this.db.addAnime(user_id, anime.title, anime.keywords)
+                            this.db.animes.addAnime(user_id, anime.title, anime.keywords)
                             this.switchNone(ctx)
                             this.fetchAnimes(ctx)
                         }
@@ -197,7 +208,7 @@ class Subscribe {
                     case Status.EditTitle:
                         if (anime.anime_id) {
                             let title = ctx.update.message.text
-                            this.db.updateAnimeTitle(anime.anime_id, title)
+                            this.db.animes.updateAnimeTitle(anime.anime_id, title)
                             this.switchNone(ctx)
                             this.fetchAnimes(ctx)
                         }
@@ -205,7 +216,7 @@ class Subscribe {
                     case Status.EditKeyrowds:
                         if (anime.anime_id) {
                             let keywords = ctx.update.message.text
-                            this.db.updateAnimeKeywords(anime.anime_id, keywords)
+                            this.db.animes.updateAnimeKeywords(anime.anime_id, keywords)
                             this.switchNone(ctx)
                             this.fetchAnimes(ctx)
                         }
@@ -213,7 +224,7 @@ class Subscribe {
                     case Status.EditEpisode:
                         if (anime.anime_id) {
                             let episode = parseInt(ctx.update.message.text) || 0
-                            this.db.updateAnimeEpisode(anime.anime_id, episode)
+                            this.db.animes.updateAnimeEpisode(anime.anime_id, episode)
                             this.switchNone(ctx)
                             this.fetchAnimes(ctx)
                         }
@@ -236,23 +247,32 @@ class Subscribe {
     fetchAnimes(ctx, is_cancle = false) {
         let user_id = ctx.from.id
         let user_name = (ctx.from.last_name ? ctx.from.last_name : '') + ctx.from.first_name
-        this.db.getAllAnimes(user_id).then((animes) => {
+        this.db.animes.getAllAnimes(user_id).then((animes) => {
             if (animes.length > 0) {
-                let array = []
-                for (let anime of animes) {
-                    array.push(Markup.callbackButton(anime.title, `anime_edit:${anime._id}`))
-                }
-                array.push(Markup.callbackButton('添加一个动画', `anime_add:${user_id}`))
-                if (is_cancle) {
-                    ctx.editMessageText(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
-                        wrap: (btn, index, currentRow) => currentRow.length >= 2
-                    }).extra())
-                }
-                else {
-                    ctx.reply(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
-                        wrap: (btn, index, currentRow) => currentRow.length >= 2
-                    }).extra())
-                }
+                this.db.users.isNotification(user_id).then((status) => {
+                    let array = []
+                    for (let anime of animes) {
+                        array.push(Markup.callbackButton(anime.title, `anime_edit:${anime._id}`))
+                    }
+                    array.push(Markup.callbackButton('添加一个动画', `anime_add:${user_id}`))
+                    if (status) {
+                        array.push(Markup.callbackButton('订阅推送: 开', `anime_notify:off:${user_id}`))
+                    } else {
+                        array.push(Markup.callbackButton('订阅推送: 关', `anime_notify:on:${user_id}`))
+                    }
+                    return array
+                }).then((array) => {
+                    if (is_cancle) {
+                        ctx.editMessageText(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
+                            wrap: (btn, index, currentRow) => currentRow.length >= 2
+                        }).extra())
+                    }
+                    else {
+                        ctx.reply(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
+                            wrap: (btn, index, currentRow) => currentRow.length >= 2
+                        }).extra())
+                    }
+                })
             } else {
                 if (is_cancle) {
                     ctx.editMessageText(`「${user_name}」没有订阅动画更新`, Markup.inlineKeyboard([
@@ -300,7 +320,7 @@ class Subscribe {
     fetchAnime(user_id) {
         var self = this
         var id = user_id
-        return self.db.getAllAnimes(user_id).then((animes) => {
+        return self.db.animes.getAllAnimes(user_id).then((animes) => {
             return Promise.all(animes.map((anime) => {
                 return self.getAnimeLoop(Promise.resolve({
                     keywords: anime.keywords,
@@ -315,18 +335,23 @@ class Subscribe {
         })
     }
 
-    updateLoop() {
-        var self = this
-        self.db.fetchAllUserId().then((users) => {
+    updateLoop(self) {
+        self.db.animes.fetchAllUserId().then((users) => {
             Promise.all(Array.from(new Set(users.map(item => item.user_id))).map((user_id) => {
-                return self.fetchAnime(user_id)
+                return self.db.users.isNotification(user_id).then((status) => {
+                    if (status) {
+                        return self.fetchAnime(user_id)
+                    } else {
+                        return { user_id: user_id, animes: [] }
+                    }
+                })
             })).then((results) => {
                 for (let result of results) {
                     for (let anime of result.animes) {
                         let text = Array.from(new Set(anime.results)).join('\n')
                         if (anime.results.length > 0) {
                             self.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
-                                self.db.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
+                                self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
                         }
                     }
                 }
@@ -336,8 +361,8 @@ class Subscribe {
 
     startloop() {
         console.log('[Subscribe] start update loop')
-        this.updateLoop()
-        setInterval(this.updateLoop, 60 * 60 * 1000) // 1小时
+        this.updateLoop(this)
+        setInterval(() => { this.updateLoop(this) }, 60 * 60 * 1000) // 1小时
     }
 }
 
