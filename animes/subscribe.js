@@ -64,13 +64,14 @@ class Subscribe {
                 })
             } else {
                 if (ctx.chat.type != 'private') {
-                    ctx.telegram.sendMessage(ctx.from.user_id, '喵~').then(() => {
+                    ctx.telegram.sendMessage(ctx.from.id, '喵~').then(() => {
                         this.fetchAnimes(ctx)
                     }).catch(() => {
                         ctx.reply('先私聊发送/start')
                     })
+                } else {
+                    this.fetchAnimes(ctx)
                 }
-                this.fetchAnimes(ctx)
             }
         })
 
