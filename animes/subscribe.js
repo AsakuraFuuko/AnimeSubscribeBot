@@ -298,16 +298,17 @@ class Subscribe {
     }
 
     fetchAnime(user_id) {
+        var self = this
         var id = user_id
-        return this.db.getAllAnimes(user_id).then((animes) => {
+        return self.db.getAllAnimes(user_id).then((animes) => {
             return Promise.all(animes.map((anime) => {
-                return this.getAnimeLoop(Promise.resolve({
+                return self.getAnimeLoop(Promise.resolve({
                     keywords: anime.keywords,
                     ep: anime.episode,
                     results: [],
                     anime_id: anime._id,
                     done: false
-                }), this.getAnime)
+                }), self.getAnime)
             })).then((animes) => {
                 return { user_id: id, animes: animes }
             })
@@ -315,16 +316,17 @@ class Subscribe {
     }
 
     updateLoop() {
-        this.db.fetchAllUserId().then((users) => {
+        var self = this
+        self.db.fetchAllUserId().then((users) => {
             Promise.all(Array.from(new Set(users.map(item => item.user_id))).map((user_id) => {
-                return this.fetchAnime(user_id)
+                return self.fetchAnime(user_id)
             })).then((results) => {
                 for (let result of results) {
                     for (let anime of result.animes) {
                         let text = Array.from(new Set(anime.results)).join('\n')
                         if (anime.results.length > 0) {
-                            this.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
-                                this.db.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
+                            self.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
+                                self.db.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
                         }
                     }
                 }
