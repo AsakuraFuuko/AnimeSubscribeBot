@@ -370,7 +370,7 @@ class Subscribe {
                     let text = Array.from(new Set(anime.results.map((result) => result.text))).join('\n')
                     if (anime.results.length > 0) {
                         for (let obj of Utils.UniqueBy(anime.results.map((result) => result.data), (item) => item.title)) {
-                            this.db.episodes.addEpisode(result.user_id, anime.title, obj.title, obj.torrent)
+                            this.db.episodes.addEpisode(result.user_id, anime.title, obj.title, obj.torrent, obj.magnet)
                         }
                         self.tgbot.telegram.sendMessage(result.user_id, text, { parse_mode: 'HTML' }).then(() =>
                             self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
