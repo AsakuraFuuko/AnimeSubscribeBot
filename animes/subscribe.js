@@ -206,7 +206,7 @@ class Subscribe {
                     case Status.Add:
                         if (!anime.title) {
                             anime.title = ctx.update.message.text
-                            ctx.reply('请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720p)')
+                            ctx.reply('请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720 mp4)')
                         } else if (!anime.keywords) {
                             anime.keywords = ctx.update.message.text
                             this.db.animes.addAnime(user_id, anime.title, anime.keywords)
@@ -305,13 +305,16 @@ class Subscribe {
     }
 
     getAnime(wrapper) {
-        console.log(`[Subscribe] fetch anime ${wrapper.title} [${wrapper.ep + 1}]`)
-        return Anime.fetchRSS(wrapper.keywords + ' ' + ('0' + (wrapper.ep + 1)).slice(-2)).then((objs) => {
+        console.log(`[Subscribe] fetch anime ${wrapper.title} [${wrapper.ep}]`)
+        return Anime.fetchRSS(wrapper.keywords + ' ' + ('0' + (wrapper.ep)).slice(-2)).then((objs) => {
             // debug(objs)
             var animes = []
             for (let anime of objs) {
-                let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
-                animes.push({ text: str, data: anime })
+                let eps = Utils.ParseEpisode(anime.title)
+                if (eps.ep.indexOf(wrapper.ep) > -1) {
+                    let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
+                    animes.push({ text: str, data: anime })
+                }
             }
             return animes
         }).then((animes) => {
@@ -323,7 +326,7 @@ class Subscribe {
                 title: wrapper.title,
                 results: results,
                 anime_id: wrapper.anime_id,
-                done: animes.length <= 0
+                done: (wrapper.ep == 0) ? false : animes.length <= 0
             }
         })
     }
