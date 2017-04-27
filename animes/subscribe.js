@@ -47,9 +47,13 @@ class Subscribe {
 
         this.tgbot.command('token', (ctx) => {
             let user_id = ctx.from.id
-            this.db.users.getTokenByUserID(user_id).then((token) => {
-                ctx.reply(`你的token是: ${token}`)
-            })
+            if (ctx.chat.type != 'private') {
+                ctx.reply('私聊可用')
+            } else {
+                this.db.users.getTokenByUserID(user_id).then((token) => {
+                    ctx.reply(`你的token是: ${token}`)
+                })
+            }
         })
         // other end
 
