@@ -66,7 +66,7 @@ class Subscribe {
                     var animes = []
                     for (let i = 0; i < Math.min(objs.length, 10); i++) {
                         let anime = objs[i]
-                        let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
+                        let str = `${dateFormat(anime.date, 'mm/dd HH:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
                         animes.push(str)
                     }
                     if (animes.length > 0) {
@@ -316,7 +316,7 @@ class Subscribe {
             for (let anime of objs) {
                 let eps = Utils.ParseEpisode(anime.title)
                 if (eps.ep.indexOf(wrapper.ep) > -1) {
-                    let str = `${dateFormat(anime.date, 'mm/dd h:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
+                    let str = `${dateFormat(anime.date, 'mm/dd HH:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`
                     animes.push({ text: str, data: anime })
                 }
             }
