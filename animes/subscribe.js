@@ -3,6 +3,7 @@ const debug = require('debug')('subscribe');
 const dateFormat = require('dateformat');
 const {Router, Extra, memorySession, Markup} = require('telegraf');
 const Utils = require('../lib/utils');
+const log = require('../lib/logger');
 require('enum').register();
 
 const Anime = new (require('./anime'))();
@@ -35,7 +36,7 @@ class Subscribe {
 
         // other start
         this.tgbot.command('start', (ctx) => {
-            console.log('start', ctx.from);
+            log('start', ctx.from);
             this.db.users.setNotification(ctx.from.id, true);
             ctx.reply('管理订阅 /anime \n[/anime 关键字]可以搜索动画')
         });
@@ -306,7 +307,7 @@ class Subscribe {
     }
 
     getAnime(wrapper) {
-        console.log(`[Subscribe] fetch anime ${wrapper.title} [${wrapper.ep}]`);
+        log(`[Subscribe] fetch anime ${wrapper.title} [${wrapper.ep}]`);
         return Anime.fetchRSS(wrapper.keywords + ' ' + ('0' + (wrapper.ep)).slice(-2)).then((objs) => {
             // debug(objs)
             let animes = [];
@@ -331,7 +332,7 @@ class Subscribe {
     fetchAnime(user) {
         let self = this;
         let {user_id} = user;
-        console.log(`[Subscribe] fetch user(${user_id}) animes`);
+        log(`[Subscribe] fetch user(${user_id}) animes`);
         return self.db.animes.getAllAnimes(user_id).then((animes) => {
             return Promise.all(animes.map((anime) => {
                 return self.getAnimeLoop(Promise.resolve({
@@ -373,7 +374,7 @@ class Subscribe {
     }
 
     startloop() {
-        console.log('[Subscribe] start update loop');
+        log('[Subscribe] start update loop');
         this.updateLoop(this);
         setInterval(() => {
             this.updateLoop(this)

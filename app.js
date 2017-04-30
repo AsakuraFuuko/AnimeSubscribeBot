@@ -2,6 +2,7 @@
 const debug = require('debug')('animesubbot');
 const Telegraf = require('telegraf');
 
+const log = require('./lib/logger');
 const commandArgsMiddleware = require('./lib/commandArgs');
 const Config = require('./lib/config');
 
@@ -23,7 +24,7 @@ tgbot.use(commandArgsMiddleware());
 const sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB});
 
 tgbot.catch((err) => {
-    console.log('Error', err)
+    log(`Error ${err}`)
 });
 
 process.on('unhandledRejection', (reason) => {
