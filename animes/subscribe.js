@@ -366,6 +366,8 @@ class Subscribe {
                         if (status) {
                             self.tgbot.telegram.sendMessage(user_id, text, {parse_mode: 'HTML'}).then(() =>
                                 self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
+                        } else {
+                            self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1)
                         }
                     }
                 }
