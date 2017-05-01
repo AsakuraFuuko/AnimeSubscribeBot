@@ -356,14 +356,14 @@ class Subscribe {
             }))
         }).then((results) => {
             for (let result of results) {
-                let {user_id, user_status} = result.user;
+                let {user_id, status} = result.user;
                 for (let anime of result.animes) {
                     let text = Array.from(new Set(anime.results.map((result) => result.text))).join('\n');
                     if (anime.results.length > 0) {
                         for (let obj of Utils.UniqueBy(anime.results.map((result) => result.data), (item) => item.title)) {
                             this.db.episodes.addEpisode(user_id, anime.title, obj.title, obj.torrent, obj.magnet)
                         }
-                        if (user_status) {
+                        if (status) {
                             self.tgbot.telegram.sendMessage(user_id, text, {parse_mode: 'HTML'}).then(() =>
                                 self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
                         }
