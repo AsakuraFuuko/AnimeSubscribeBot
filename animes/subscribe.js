@@ -329,7 +329,7 @@ class Subscribe {
                         array.push({text: '添加一个动画', callback_data: `add‼${user_id}`});
                         for (let anime of animes) {
                             array.push({
-                                text: `${anime.title} (${anime.episode})`,
+                                text: `(${anime.episode}) ${anime.title}`,
                                 callback_data: `menu‼edit‼${anime._id}`
                             })
                         }
