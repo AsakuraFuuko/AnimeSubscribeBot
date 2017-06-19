@@ -76,9 +76,15 @@ app.delete('/episode/:id', (req, res) => {
     })
 });
 
-https.createServer(options, app).listen(PORT, '0.0.0.0', null, function () {
-    log(`Server listening on port ${this.address().port} in ${app.settings.env} mode`);
-});
+if (isLocal) {
+    https.createServer(options, app).listen(PORT, '0.0.0.0', null, function () {
+        log(`Server listening on port ${this.address().port} in ${app.settings.env} mode`);
+    });
+} else {
+    app.listen(PORT, () => {
+        console.log(`Express server is listening on ${PORT}`);
+    });
+}
 
 process.on('unhandledRejection', (reason) => {
     console.error(reason);
