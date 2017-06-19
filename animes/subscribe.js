@@ -370,7 +370,7 @@ class Subscribe {
                         )
                     }
                     else {
-                        return self.tgbot.sendMessage(`「${user_name}」没有订阅动画更新`, {
+                        return self.tgbot.sendMessage(chat_id, `「${user_name}」没有订阅动画更新`, {
                                 reply_markup: {
                                     inline_keyboard: [[{text: '添加一个动画', callback_data: `add:${user_id}`}]]
                                 }
