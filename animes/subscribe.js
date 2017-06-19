@@ -323,6 +323,7 @@ class Subscribe {
         function fetchAnimes(opts, is_cancel = false) {
             let {user_name, user_id, chat_id, msg_id} = opts;
             self.db.animes.getAllAnimes(user_id).then((animes) => {
+                debug(animes);
                 if (animes.length > 0) {
                     self.db.users.isNotification(user_id).then((status) => {
                         let array = [];
