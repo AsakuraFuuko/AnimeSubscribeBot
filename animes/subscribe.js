@@ -1,67 +1,81 @@
 'use strict';
 const debug = require('debug')('subscribe');
 const dateFormat = require('dateformat');
-const {Router, Extra, memorySession, Markup} = require('telegraf');
 const Utils = require('../lib/utils');
 const log = require('../lib/logger');
-require('enum').register();
 
 const Anime = new (require('./anime'))();
 
-const simpleRouter = new Router((ctx) => {
-    if (!ctx.callbackQuery.data) {
-        return Promise.resolve()
-    }
-    const parts = ctx.callbackQuery.data.split(':');
-    return Promise.resolve({
-        route: parts[0],
-        state: {
-            args: parts.slice(1, parts.length)
-        }
-    })
-});
-
-const Status = new Enum(['None', 'Add', 'Edit', 'EditTitle', 'EditKeyrowds', 'EditEpisode', 'Delete']);
-
 class Subscribe {
-    constructor(tgbot, db) {
+    constructor(tgbot, db, botname) {
         this.tgbot = tgbot;
         this.db = db;
+        this.botname = botname;
         this.op()
     }
 
     op() {
-        this.tgbot.use(memorySession());
-        this.tgbot.on('callback_query', simpleRouter.middleware());
+        let self = this;
 
         // other start
-        this.tgbot.command('start', (ctx) => {
-            log('start', ctx.from);
-            this.db.users.setNotification(ctx.from.id, true);
-            ctx.reply('管理订阅 /anime \n[/anime 关键字]可以搜索动画')
+        this.tgbot.onText(/\/start(@\w+)?(?: )?(.*)/, (msg, match) => {
+            let user_id = msg.from.id;
+            let chat_id = msg.chat.id;
+            let bot_name = match[1];
+            if (bot_name && bot_name !== this.botname) {
+                return;
+            }
+            let args = match[2];
+            debug(args);
+
+            log('start', msg.from);
+            this.db.users.setNotification(parseInt(user_id), true);
+            return this.tgbot.sendMessage(chat_id, '管理订阅 /anime \n[/anime 关键字]可以搜索动画')
         });
 
-        this.tgbot.command('debug', (ctx) => {
-            ctx.reply(ctx.update.message)
+        this.tgbot.onText(/\/debug(@\w+)?(?: )?(.*)/, (msg, match) => {
+            let chat_id = msg.chat.id;
+            let bot_name = match[1];
+            if (bot_name && bot_name !== this.botname) {
+                return;
+            }
+            let args = match[2];
+            debug(args);
+
+            return this.tgbot.sendMessage(chat_id, msg.update.message)
         });
 
-        this.tgbot.command('token', (ctx) => {
-            let user_id = ctx.from.id;
-            if (ctx.chat.type !== 'private') {
-                ctx.reply('私聊可用')
+        this.tgbot.onText(/\/token(@\w+)?(?: )?(.*)/, (msg, match) => {
+            let user_id = msg.from.id;
+            let chat_id = msg.chat.id;
+            let bot_name = match[1];
+            if (bot_name && bot_name !== this.botname) {
+                return;
+            }
+            let args = match[2];
+            debug(args);
+
+            if (msg.chat.type !== 'private') {
+                return this.tgbot.sendMessage(chat_id, '私聊可用')
             } else {
-                this.db.users.getTokenByUserID(user_id).then((token) => {
-                    ctx.reply(`你的token是: ${token}`)
+                return this.db.users.getTokenByUserID(user_id).then((token) => {
+                    return this.tgbot.sendMessage(chat_id, `你的token是: ${token}`)
                 })
             }
         });
         // other end
 
-        this.tgbot.command('anime', (ctx) => {
-            let obj = ctx.state.command;
-            debug(obj);
-            if (obj.args.length > 0) {
-                Anime.fetchRSS(obj.args.join(' ')).then((objs) => {
+        this.tgbot.onText(/\/anime(@\w+)?(?: )?(.*)/, (msg, match) => {
+            let chat_id = msg.chat.id;
+            let bot_name = match[1];
+            if (bot_name && bot_name !== this.botname) {
+                return;
+            }
+            let args = match[2];
+            debug(args);
+
+            if (args.length > 0) {
+                return Anime.fetchRSS(args.join(' ')).then((objs) => {
                     debug(objs);
                     let animes = [];
                     for (let i = 0; i < Math.min(objs.length, 10); i++) {
@@ -70,235 +84,305 @@ class Subscribe {
                         animes.push(str)
                     }
                     if (animes.length > 0) {
-                        return ctx.reply(animes.join('\n'), {parse_mode: 'HTML'})
+                        return this.tgbot.sendMessage(chat_id, animes.join('\n'), {parse_mode: 'HTML'})
                     } else {
-                        return ctx.reply('没有结果')
+                        return this.tgbot.sendMessage(chat_id, '没有结果')
                     }
                 })
             } else {
-                if (ctx.chat.type !== 'private') {
-                    ctx.reply('请输入关键字，订阅管理私聊可用')
+                if (msg.chat.type !== 'private') {
+                    return this.tgbot.sendMessage(chat_id, '请输入关键字，订阅管理私聊可用')
                 } else {
-                    this.fetchAnimes(ctx)
-                }
-            }
-        });
-
-        simpleRouter.on('anime_add', (ctx) => {
-            let user_id = ctx.from.id;
-            ctx.editMessageText('添加一个动画...');
-            ctx.reply('请输入动画的名字(例：从零开始的魔法书)');
-            if (!ctx.session.hasOwnProperty('anime')) {
-                ctx.session.anime = {}
-            }
-            ctx.session.anime[user_id] = {
-                curr: Status.Add
-            }
-        });
-
-        simpleRouter.on('anime_edit', (ctx) => {
-            let user_id = ctx.from.id;
-            this.db.animes.getAnime(ctx.state.args[0]).then((anime) => {
-                ctx.editMessageText(`<code>动画 「${anime.title}」</code>\n关键字「${anime.keywords}」\n当前集数: ${anime.episode}`, Extra.HTML().markup((m) =>
-                    m.inlineKeyboard([
-                        m.callbackButton('修改名称', `anime_edit2:title:${anime._id}`),
-                        m.callbackButton('修改关键字', `anime_edit2:keywords:${anime._id}`),
-                        m.callbackButton('修改当前集数', `anime_edit2:episode:${anime._id}`),
-                        m.callbackButton('删除这个订阅', `anime_del:${anime._id}`),
-                        m.callbackButton('返回', `anime_edit2:cancle`)
-                    ], {
-                        wrap: (btn, index, currentRow) => currentRow.length >= (index + 1) / 2
+                    fetchAnimes({
+                        user_id: msg.from.id,
+                        chat_id,
+                        msg_id: msg.message_id,
+                        user_name: (msg.from.last_name ? msg.from.last_name : '') + msg.from.first_name
                     })
-                ));
-                if (!ctx.session.hasOwnProperty('anime')) {
-                    ctx.session.anime = {}
                 }
-                ctx.session.anime[user_id] = {
-                    curr: Status.Edit
-                }
-            })
+            }
         });
 
-        simpleRouter.on('anime_edit2', (ctx) => {
-            let user_id = ctx.from.id;
-            switch (ctx.state.args[0]) {
+        this.tgbot.on('callback_query', (callbackQuery) => {
+            const action = callbackQuery.data;
+            const msg = callbackQuery.message;
+            const opts = {
+                user_id: callbackQuery.from.id,
+                chat_id: msg.chat.id,
+                msg_id: msg.message_id,
+                callback_id: callbackQuery.id,
+                user_name: (callbackQuery.from.last_name ? callbackQuery.from.last_name : '') + callbackQuery.from.first_name
+            };
+
+            return handleCallbackQuery(action, opts, msg)
+        });
+
+        function handleCallbackQuery(action, opts, msg) {
+            debug(action);
+            debug(msg);
+            debug(opts);
+
+            let args = action.split('‼');
+            switch (args[0]) {
+                case 'add' : {
+                    return animeAddHandle(opts)
+                }
+                case 'menu': {
+                    let anime_id = args[2];
+                    switch (args[1]) {
+                        case 'edit': {
+                            return animeEditMenuHandle(Object.assign(opts, {anime_id}))
+                        }
+                        case 'delete': {
+                            return animeDeleteMenuHandle(Object.assign(opts, {anime_id}))
+                        }
+                    }
+                    break;
+                }
+                case 'edit': {
+                    let action = args[1];
+                    let anime_id = args[2];
+                    return animeEditHandle(Object.assign(opts, {anime_id, action}))
+                }
+                case 'delete': {
+                    let action = args[1];
+                    let anime_id = args[2];
+                    return animeDeleteHandle(Object.assign(opts, {anime_id, action}))
+                }
+                case 'notify': {
+                    let action = args[1];
+                    let anime_id = args[2];
+                    return animeNotifyHandle(Object.assign(opts, {anime_id, action}))
+                }
+            }
+        }
+
+        function animeAddHandle(opts) {
+            let {chat_id, user_id, msg_id} = opts;
+            let anime = {};
+            return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
+                return self.tgbot.sendMessage(chat_id, '请输入动画的名字(例：从零开始的魔法书)', {
+                    reply_markup: {
+                        force_reply: true
+                    }
+                }).then((sended) => {
+                    return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                        if (replyMessage && replyMessage.text.trim()) {
+                            anime.title = replyMessage.text.trim();
+                            return self.tgbot.sendMessage(chat_id, '请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720 mp4)', {
+                                reply_markup: {
+                                    force_reply: true
+                                }
+                            }).then((sended) => {
+                                return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                                    if (replyMessage && replyMessage.text.trim()) {
+                                        anime.keywords = replyMessage.text.trim();
+                                        self.db.animes.addAnime(user_id, anime.title, anime.keywords);
+                                        fetchAnimes(opts);
+                                    }
+                                });
+                            })
+                        }
+                    });
+                })
+            })
+        }
+
+        function animeEditMenuHandle(opts) {
+            let {chat_id, msg_id, anime_id} = opts;
+            return self.db.animes.getAnime(anime_id).then((anime) => {
+                return self.tgbot.editMessageText(`<code>动画 「${anime.title}」</code>\n关键字「${anime.keywords}」\n当前集数: ${anime.episode}`, {
+                    chat_id: chat_id,
+                    message_id: msg_id,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [[
+                            {text: '修改名称', callback_data: `edit‼title‼${anime._id}`},
+                            {text: '修改关键字', callback_data: `edit‼keywords‼${anime._id}`}
+                        ], [
+                            {text: '修改当前集数', callback_data: `edit‼episode‼${anime._id}`},
+                            {text: '删除这个订阅', callback_data: `menu‼delete‼${anime._id}`}
+                        ], [
+                            {text: '返回', callback_data: `edit‼cancel`},
+                        ]]
+                    }
+                })
+            })
+        }
+
+        function animeEditHandle(opts) {
+            let {chat_id, msg_id, anime_id, action} = opts;
+            switch (action) {
                 case 'title':
-                    this.db.animes.getAnime(ctx.state.args[1]).then((anime) => {
-                        ctx.editMessageText(`<code>修改动画 「${anime.title}」</code>\n请输入新的名称`, {parse_mode: 'HTML'});
-                        if (!ctx.session.hasOwnProperty('anime')) {
-                            ctx.session.anime = {}
-                        }
-                        ctx.session.anime[user_id] = {
-                            curr: Status.EditTitle,
-                            anime_id: ctx.state.args[1]
-                        }
+                    return self.db.animes.getAnime(anime_id).then((anime) => {
+                        return self.tgbot.sendMessage(chat_id, `<code>修改动画 「${anime.title}」</code>\n请输入新的名称`, {
+                            parse_mode: 'HTML',
+                            reply_markup: {
+                                force_reply: true
+                            }
+                        }).then((sended) => {
+                            return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                                if (replyMessage && replyMessage.text.trim()) {
+                                    return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
+                                        self.db.animes.updateAnimeTitle(anime_id, replyMessage.text.trim());
+                                        fetchAnimes(opts)
+                                    })
+                                }
+                            });
+                        })
                     });
                     break;
                 case 'keywords':
-                    this.db.animes.getAnime(ctx.state.args[1]).then((anime) => {
-                        ctx.editMessageText(`<code>修改动画 「${anime.title}」</code>\n当前关键字「${anime.keywords}」\n请输入新的关键字`, {parse_mode: 'HTML'});
-                        if (!ctx.session.hasOwnProperty('anime')) {
-                            ctx.session.anime = {}
-                        }
-                        ctx.session.anime[user_id] = {
-                            curr: Status.EditKeyrowds,
-                            anime_id: ctx.state.args[1]
-                        }
-
+                    return self.db.animes.getAnime(anime_id).then((anime) => {
+                        return self.tgbot.sendMessage(chat_id, `<code>修改动画 「${anime.title}」</code>\n当前关键字「${anime.keywords}」\n请输入新的关键字`, {
+                            parse_mode: 'HTML',
+                            reply_markup: {
+                                force_reply: true
+                            }
+                        }).then((sended) => {
+                            return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                                if (replyMessage && replyMessage.text.trim()) {
+                                    return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
+                                        self.db.animes.updateAnimeKeywords(anime_id, replyMessage.text.trim());
+                                        fetchAnimes(opts)
+                                    })
+                                }
+                            });
+                        })
                     });
                     break;
                 case 'episode':
-                    this.db.animes.getAnime(ctx.state.args[1]).then((anime) => {
-                        ctx.editMessageText(`<code>修改动画 「${anime.title}」</code>\n当前集数「${anime.episode}」\n请输入新的集数`, {parse_mode: 'HTML'});
-                        if (!ctx.session.hasOwnProperty('anime')) {
-                            ctx.session.anime = {}
-                        }
-                        ctx.session.anime[user_id] = {
-                            curr: Status.EditEpisode,
-                            anime_id: ctx.state.args[1]
-                        }
+                    return self.db.animes.getAnime(anime_id).then((anime) => {
+                        return self.tgbot.sendMessage(chat_id, `<code>修改动画 「${anime.title}」</code>\n当前集数「${anime.episode}」\n请输入新的集数`, {
+                            parse_mode: 'HTML',
+                            reply_markup: {
+                                force_reply: true
+                            }
+                        }).then((sended) => {
+                            return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                                if (replyMessage && replyMessage.text.trim()) {
+                                    return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
+                                        self.db.animes.updateAnimeEpisode(anime_id, replyMessage.text.trim());
+                                        fetchAnimes(opts)
+                                    })
+                                }
+                            });
+                        })
                     });
                     break;
-                default:
-                    Subscribe.switchNone(ctx);
-                    this.fetchAnimes(ctx, true);
+                case 'cancel':
+                default: {
+                    fetchAnimes(opts, true);
                     break;
-            }
-        });
-
-        simpleRouter.on('anime_del', (ctx) => {
-            let user_id = ctx.from.id;
-            this.db.animes.getAnime(ctx.state.args[0]).then((anime) => {
-                ctx.editMessageText(`是否删除订阅动画 「${anime.title}」`, Markup.inlineKeyboard([
-                    Markup.callbackButton('确定', `anime_del2:ok:${anime._id}`),
-                    Markup.callbackButton('取消', `anime_del2:cancle`)
-                ]).extra());
-                if (!ctx.session.hasOwnProperty('anime')) {
-                    ctx.session.anime = {}
-                }
-                ctx.session.anime[user_id] = {
-                    curr: Status.Delete
-                }
-            })
-        });
-
-        simpleRouter.on('anime_del2', (ctx) => {
-            if (ctx.state.args[0] === 'ok') {
-                this.db.animes.removeAnime(ctx.state.args[1])
-            }
-            Subscribe.switchNone(ctx);
-            this.fetchAnimes(ctx, true)
-        });
-
-        simpleRouter.on('anime_notify', (ctx) => {
-            if (ctx.state.args[0] === 'on') {
-                this.db.users.setNotification(parseInt(ctx.state.args[1]), true)
-            } else if (ctx.state.args[0] === 'off') {
-                this.db.users.setNotification(parseInt(ctx.state.args[1]), false)
-            }
-            Subscribe.switchNone(ctx);
-            this.fetchAnimes(ctx, true)
-        });
-
-        this.tgbot.on('message', (ctx) => {
-            let user_id = ctx.from.id;
-            if (ctx.session.anime && ctx.session.anime.hasOwnProperty(user_id)) {
-                let anime = ctx.session.anime[user_id];
-                switch (anime.curr) {
-                    case Status.Add:
-                        if (!anime.title) {
-                            anime.title = ctx.update.message.text;
-                            ctx.reply('请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720 mp4)')
-                        } else if (!anime.keywords) {
-                            anime.keywords = ctx.update.message.text;
-                            this.db.animes.addAnime(user_id, anime.title, anime.keywords);
-                            Subscribe.switchNone(ctx);
-                            this.fetchAnimes(ctx)
-                        }
-                        break;
-                    case Status.EditTitle:
-                        if (anime.anime_id) {
-                            let title = ctx.update.message.text;
-                            this.db.animes.updateAnimeTitle(anime.anime_id, title);
-                            Subscribe.switchNone(ctx);
-                            this.fetchAnimes(ctx)
-                        }
-                        break;
-                    case Status.EditKeyrowds:
-                        if (anime.anime_id) {
-                            let keywords = ctx.update.message.text;
-                            this.db.animes.updateAnimeKeywords(anime.anime_id, keywords);
-                            Subscribe.switchNone(ctx);
-                            this.fetchAnimes(ctx)
-                        }
-                        break;
-                    case Status.EditEpisode:
-                        if (anime.anime_id) {
-                            let episode = parseInt(ctx.update.message.text) || 0;
-                            this.db.animes.updateAnimeEpisode(anime.anime_id, episode);
-                            Subscribe.switchNone(ctx);
-                            this.fetchAnimes(ctx)
-                        }
-                        break
                 }
             }
-        })
-    }
-
-    static switchNone(ctx) {
-        let user_id = ctx.from.id;
-        if (!ctx.session.hasOwnProperty('anime')) {
-            ctx.session.anime = {}
         }
-        ctx.session.anime[user_id] = {
-            curr: Status.None
-        }
-    }
 
-    fetchAnimes(ctx, is_cancle = false) {
-        let user_id = ctx.from.id;
-        let user_name = (ctx.from.last_name ? ctx.from.last_name : '') + ctx.from.first_name;
-        this.db.animes.getAllAnimes(user_id).then((animes) => {
-            if (animes.length > 0) {
-                this.db.users.isNotification(user_id).then((status) => {
-                    let array = [];
-                    for (let anime of animes) {
-                        array.push(Markup.callbackButton(anime.title, `anime_edit:${anime._id}`))
-                    }
-                    array.push(Markup.callbackButton('添加一个动画', `anime_add:${user_id}`));
-                    if (status) {
-                        array.push(Markup.callbackButton('订阅推送: 开', `anime_notify:off:${user_id}`))
-                    } else {
-                        array.push(Markup.callbackButton('订阅推送: 关', `anime_notify:on:${user_id}`))
-                    }
-                    return array
-                }).then((array) => {
-                    if (is_cancle) {
-                        ctx.editMessageText(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
-                            wrap: (btn, index, currentRow) => currentRow.length >= 2
-                        }).extra())
-                    }
-                    else {
-                        ctx.reply(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, Markup.inlineKeyboard(array, {
-                            wrap: (btn, index, currentRow) => currentRow.length >= 2
-                        }).extra())
+        function animeDeleteMenuHandle(opts) {
+            let {chat_id, msg_id, anime_id} = opts;
+            return self.db.animes.getAnime(anime_id).then((anime) => {
+                return self.tgbot.editMessageText(`是否删除订阅动画 「${anime.title}」`, {
+                    chat_id: chat_id,
+                    message_id: msg_id,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [[
+                            {text: '确定', callback_data: `delete‼ok‼${anime._id}`},
+                            {text: '取消', callback_data: `delete‼cancel‼${anime._id}`}
+                        ]]
                     }
                 })
-            } else {
-                if (is_cancle) {
-                    ctx.editMessageText(`「${user_name}」没有订阅动画更新`, Markup.inlineKeyboard([
-                        Markup.callbackButton('添加一个动画', `anime_add:${user_id}`)
-                    ]).extra())
-                }
-                else {
-                    ctx.reply(`「${user_name}」没有订阅动画更新`, Markup.inlineKeyboard([
-                        Markup.callbackButton('添加一个动画', `anime_add:${user_id}`)
-                    ]).extra())
+            })
+        }
+
+        function animeDeleteHandle(opts) {
+            let {anime_id, action} = opts;
+            switch (action) {
+                case 'ok':
+                    self.db.animes.removeAnime(anime_id);
+                    fetchAnimes(opts, true);
+                    break;
+                case 'cancel':
+                default: {
+                    animeEditMenuHandle(opts);
+                    break;
                 }
             }
-        })
+        }
+
+        function animeNotifyHandle(opts) {
+            let {action, user_id} = opts;
+            if (action === 'on') {
+                self.db.users.setNotification(parseInt(user_id), true)
+            } else if (action === 'off') {
+                self.db.users.setNotification(parseInt(user_id), false)
+            }
+            fetchAnimes(opts, true)
+        }
+
+        function fetchAnimes(opts, is_cancel = false) {
+            let {user_name, user_id, chat_id, msg_id} = opts;
+            self.db.animes.getAllAnimes(user_id).then((animes) => {
+                if (animes.length > 0) {
+                    self.db.users.isNotification(user_id).then((status) => {
+                        let array = [];
+                        if (status) {
+                            array.push({text: '订阅推送: 开', callback_data: `notify‼off‼${user_id}`})
+                        } else {
+                            array.push({text: '订阅推送: 关', callback_data: `notify‼on‼${user_id}`})
+                        }
+                        array.push({text: '添加一个动画', callback_data: `add‼${user_id}`});
+                        for (let anime of animes) {
+                            array.push({
+                                text: `${anime.title} (${anime.episode})`,
+                                callback_data: `menu‼edit‼${anime._id}`
+                            })
+                        }
+                        return array
+                    }).then((array) => {
+                        if (is_cancel) {
+                            return self.tgbot.editMessageText(`「${user_name}」当前订阅的动画 (数量: ${animes.length})`, {
+                                    chat_id: chat_id,
+                                    message_id: msg_id,
+                                    reply_markup: {
+                                        inline_keyboard: Utils.ArrayToArrays(array, 2)
+                                    }
+                                }
+                            )
+                        }
+                        else {
+                            return self.tgbot.sendMessage(chat_id, `「${user_name}」当前订阅的动画 (数量: ${animes.length})`, {
+                                reply_markup: {
+                                    inline_keyboard: Utils.ArrayToArrays(array, 2)
+                                }
+                            })
+                        }
+                    })
+                } else {
+                    if (is_cancel) {
+                        return self.tgbot.editMessageText(`「${user_name}」没有订阅动画更新`, {
+                                chat_id: chat_id,
+                                message_id: msg_id,
+                                reply_markup: {
+                                    inline_keyboard: [[{text: '添加一个动画', callback_data: `add:${user_id}`}]]
+                                }
+                            }
+                        )
+                    }
+                    else {
+                        return self.tgbot.sendMessage(`「${user_name}」没有订阅动画更新`, {
+                                reply_markup: {
+                                    inline_keyboard: [[{text: '添加一个动画', callback_data: `add:${user_id}`}]]
+                                }
+                            }
+                        )
+                    }
+                }
+            })
+        }
     }
 
+    // fetch anime start
     getAnimeLoop(promise, fn) {
         let self = this;
         return promise.then(fn).then(function (wrapper) {
@@ -323,8 +407,8 @@ class Subscribe {
             let results = wrapper.results;
             results = results.concat(animes);
             wrapper.results = results;
-            wrapper.ep += 1;
             wrapper.done = (wrapper.ep === 0) ? false : animes.length <= 0;
+            wrapper.ep += 1;
             return wrapper
         })
     }
@@ -337,7 +421,7 @@ class Subscribe {
             return Promise.all(animes.map((anime) => {
                 return self.getAnimeLoop(Promise.resolve({
                     keywords: anime.keywords,
-                    ep: anime.episode,
+                    ep: parseInt(anime.episode) + 1,
                     title: anime.title,
                     results: [],
                     anime_id: anime._id,
@@ -364,10 +448,13 @@ class Subscribe {
                             this.db.episodes.addEpisode(user_id, anime.title, obj.title, obj.torrent, obj.magnet)
                         }
                         if (status) {
-                            self.tgbot.telegram.sendMessage(user_id, text, {parse_mode: 'HTML'}).then(() =>
-                                self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1))
+                            self.tgbot.sendMessage(user_id, text, {
+                                parse_mode: 'HTML',
+                                disable_web_page_preview: true
+                            }).then(() =>
+                                self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 2))
                         } else {
-                            self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 1)
+                            self.db.animes.updateAnimeEpisode(anime.anime_id, anime.ep - 2)
                         }
                     }
                 }
@@ -382,6 +469,8 @@ class Subscribe {
             this.updateLoop(this)
         }, 60 * 60 * 1000) // 1小时
     }
+
+    // fetch anime end
 }
 
 module.exports = Subscribe;

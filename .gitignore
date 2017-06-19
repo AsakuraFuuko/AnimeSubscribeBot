@@ -60,3 +60,5 @@ typings/
 .vscode
 .idea
 config.yaml
+config.json
+package-lock.json

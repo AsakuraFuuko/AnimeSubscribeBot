@@ -1,0 +1,29 @@
+{
+  "name": "AnimeSubscribeBot",
+  "description": "a bot for telegram",
+  "repository": "https://github.com/AsakuraFuuko/AnimeSubscribeBot",
+  "keywords": [
+    "bot",
+    "telegram",
+    "telegram-bot",
+    "anime"
+  ],
+  "env": {
+    "PORT": {
+      "description": "listen port",
+      "value": "9000"
+    },
+    "APP_URL": {
+      "description": "heroku app url",
+      "value": ""
+    },
+    "TELEGRAM_TOKEN": {
+      "description": "telegram bot token",
+      "value": ""
+    },
+    "LOCAL": {
+      "description": "local test",
+      "value": "false"
+    }
+  }
+}

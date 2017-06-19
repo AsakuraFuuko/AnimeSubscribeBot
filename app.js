@@ -1,37 +1,84 @@
 'use strict';
 const debug = require('debug')('animesubbot');
-const Telegraf = require('telegraf');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+const bodyParser = require('body-parser');
+const https = require('https');
+const fs = require('fs');
 
 const log = require('./lib/logger');
-const commandArgsMiddleware = require('./lib/commandArgs');
-const Config = require('./lib/config');
-
-const AnimesDB = new (require('./lib/db/animes'))();
-const UsersDB = new (require('./lib/db/users'))();
-const EpisodesDB = new (require('./lib/db/episodes'))();
 
 const Subscribe = require('./animes/subscribe');
-const Server = require('./lib/server');
 
-const server = new Server(Config.server.host, Config.server.port, {users: UsersDB, episodes: EpisodesDB});
+let UsersDB, AnimesDB, EpisodesDB;
+let isLocal = process.env.LOCAL === 'true';
+console.log('isLocal =', isLocal);
 
-const tgbot = new Telegraf(Config.tgbot.token, {
-    username: Config.tgbot.username
+if (isLocal) {
+    AnimesDB = new (require('./lib/db/animes'))();
+    UsersDB = new (require('./lib/db/users'))();
+    EpisodesDB = new (require('./lib/db/episodes'))();
+} else {
+
+}
+
+const TOKEN = process.env.TELEGRAM_TOKEN;
+const PORT = process.env.PORT || 5000;
+const options = {};
+
+if (isLocal) {
+    options.key = fs.readFileSync(`${__dirname}/private.key`);  // Path to file with PEM private key
+    options.cert = fs.readFileSync(`${__dirname}/cert.pem`)  // Path to file with PEM certificate
+}
+
+let botname = '@bot_name';
+const url = process.env.APP_URL;
+const tgbot = new TelegramBot(TOKEN);
+
+if (isLocal) {
+    tgbot.setWebHook(`${url}/bot${TOKEN}`, {
+        certificate: `${__dirname}/cert.pem`,
+    });
+} else {
+    tgbot.setWebHook(`${url}/bot${TOKEN}`);
+}
+
+tgbot.getMe().then((msg) => {
+    botname = '@' + msg.username;
+    const sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB}, botname);
+    sub.startloop();
 });
 
-tgbot.use(commandArgsMiddleware());
+const app = express();
 
-const sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB});
+app.use(bodyParser.json());
 
-tgbot.catch((err) => {
-    log(`Error ${err}`)
+app.post(`/bot${TOKEN}`, (req, res) => {
+    tgbot.processUpdate(req.body);
+    res.sendStatus(200);
+});
+
+app.get('/episodes/:token', (req, res) => {
+    UsersDB.getUserIDByToken(req.params.token).then((user_id) => {
+        EpisodesDB.getAllEpisode(user_id).then((episodes) => {
+            res.json({status: true, result: episodes})
+        })
+    }).catch((err) => {
+        res.json({status: false, result: err})
+    })
+});
+
+app.delete('/episode/:id', (req, res) => {
+    EpisodesDB.deleteEpisode(req.params.id).then((result) => {
+        res.json({status: result})
+    })
+});
+
+https.createServer(options, app).listen(PORT, '0.0.0.0', null, function () {
+    log(`Server listening on port ${this.address().port} in ${app.settings.env} mode`);
 });
 
 process.on('unhandledRejection', (reason) => {
     console.error(reason);
     //   process.exit(1);
 });
-
-tgbot.startPolling();
-sub.startloop();
-server.startListen();
