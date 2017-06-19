@@ -75,7 +75,7 @@ class Subscribe {
             debug(args);
 
             if (args.length > 0) {
-                return Anime.fetchRSS(args.join(' ')).then((objs) => {
+                return Anime.fetchRSS(args).then((objs) => {
                     debug(objs);
                     let animes = [];
                     for (let i = 0; i < Math.min(objs.length, 10); i++) {
