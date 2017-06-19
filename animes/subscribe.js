@@ -177,8 +177,7 @@ class Subscribe {
                                 return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
                                     if (replyMessage && replyMessage.text.trim()) {
                                         anime.keywords = replyMessage.text.trim();
-                                        self.db.animes.addAnime(user_id, anime.title, anime.keywords);
-                                        fetchAnimes(opts);
+                                        self.db.animes.addAnime(user_id, anime.title, anime.keywords).then((res) => fetchAnimes(opts))
                                     }
                                 });
                             })
@@ -224,8 +223,7 @@ class Subscribe {
                             return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
                                 if (replyMessage && replyMessage.text.trim()) {
                                     return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
-                                        self.db.animes.updateAnimeTitle(anime_id, replyMessage.text.trim());
-                                        fetchAnimes(opts)
+                                        self.db.animes.updateAnimeTitle(anime_id, replyMessage.text.trim()).then(() => fetchAnimes(opts))
                                     })
                                 }
                             });
@@ -243,8 +241,7 @@ class Subscribe {
                             return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
                                 if (replyMessage && replyMessage.text.trim()) {
                                     return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
-                                        self.db.animes.updateAnimeKeywords(anime_id, replyMessage.text.trim());
-                                        fetchAnimes(opts)
+                                        self.db.animes.updateAnimeKeywords(anime_id, replyMessage.text.trim()).then(() => fetchAnimes(opts))
                                     })
                                 }
                             });
@@ -262,8 +259,7 @@ class Subscribe {
                             return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
                                 if (replyMessage && replyMessage.text.trim()) {
                                     return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
-                                        self.db.animes.updateAnimeEpisode(anime_id, replyMessage.text.trim());
-                                        fetchAnimes(opts)
+                                        self.db.animes.updateAnimeEpisode(anime_id, replyMessage.text.trim()).then(() => fetchAnimes(opts))
                                     })
                                 }
                             });
@@ -299,8 +295,7 @@ class Subscribe {
             let {anime_id, action} = opts;
             switch (action) {
                 case 'ok':
-                    self.db.animes.removeAnime(anime_id);
-                    fetchAnimes(opts, true);
+                    self.db.animes.removeAnime(anime_id).then(() => fetchAnimes(opts, true));
                     break;
                 case 'cancel':
                 default: {
@@ -313,11 +308,10 @@ class Subscribe {
         function animeNotifyHandle(opts) {
             let {action, user_id} = opts;
             if (action === 'on') {
-                self.db.users.setNotification(parseInt(user_id), true)
+                self.db.users.setNotification(parseInt(user_id), true).then(() => fetchAnimes(opts, true))
             } else if (action === 'off') {
-                self.db.users.setNotification(parseInt(user_id), false)
+                self.db.users.setNotification(parseInt(user_id), false).then(() => fetchAnimes(opts, true))
             }
-            fetchAnimes(opts, true)
         }
 
         function fetchAnimes(opts, is_cancel = false) {
