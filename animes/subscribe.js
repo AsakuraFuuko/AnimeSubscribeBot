@@ -364,7 +364,7 @@ class Subscribe {
                                 chat_id: chat_id,
                                 message_id: msg_id,
                                 reply_markup: {
-                                    inline_keyboard: [[{text: '添加一个动画', callback_data: `add:${user_id}`}]]
+                                    inline_keyboard: [[{text: '添加一个动画', callback_data: `add‼${user_id}`}]]
                                 }
                             }
                         )
@@ -372,7 +372,7 @@ class Subscribe {
                     else {
                         return self.tgbot.sendMessage(chat_id, `「${user_name}」没有订阅动画更新`, {
                                 reply_markup: {
-                                    inline_keyboard: [[{text: '添加一个动画', callback_data: `add:${user_id}`}]]
+                                    inline_keyboard: [[{text: '添加一个动画', callback_data: `add‼${user_id}`}]]
                                 }
                             }
                         )
