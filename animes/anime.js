@@ -5,8 +5,6 @@ const parser = require('rss-parser');
 const util = require('util');
 const dateFormat = require('dateformat');
 
-const Config = require('../lib/config');
-
 class Anime {
     constructor() {
         this.url = 'https://share.dmhy.org/topics/rss/rss.xml';
@@ -20,9 +18,6 @@ class Anime {
                 sort_id: 2
             }
         };
-        if (Config.proxy !== '') {
-            options.proxy = Config.proxy
-        }
         return requestPromise.get(options).then((body) => {
             return this._parse(body)
         })

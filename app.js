@@ -19,7 +19,9 @@ if (isLocal) {
     UsersDB = new (require('./lib/db/users'))();
     EpisodesDB = new (require('./lib/db/episodes'))();
 } else {
-
+    AnimesDB = new (require('./lib/db/pg/animes'))();
+    UsersDB = new (require('./lib/db/pg/users'))();
+    EpisodesDB = new (require('./lib/db/pg/episodes'))();
 }
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
