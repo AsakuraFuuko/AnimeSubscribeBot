@@ -61,8 +61,9 @@ app.post(`/bot${TOKEN}`, (req, res) => {
 });
 
 app.get('/episodes/:token', (req, res) => {
-    UsersDB.getUserIDByToken(req.params.token).then((user_id) => {
-        EpisodesDB.getAllEpisode(user_id).then((episodes) => {
+    return UsersDB.getUserIDByToken(req.params.token).then((user_id) => {
+        return EpisodesDB.getAllEpisode(user_id).then((episodes) => {
+            debug(episodes);
             res.json({status: true, result: episodes})
         })
     }).catch((err) => {
