@@ -70,7 +70,8 @@ app.get('/episodes/:token', (req, res) => {
             res.json({status: true, result: episodes})
         })
     }).catch((err) => {
-        res.json({status: false, result: err})
+        console.error(err);
+        res.json({status: false, result: err.message})
     })
 });
 
