@@ -84,7 +84,10 @@ class Subscribe {
                         animes.push(str)
                     }
                     if (animes.length > 0) {
-                        return this.tgbot.sendMessage(chat_id, animes.join('\n'), {parse_mode: 'HTML'})
+                        return this.tgbot.sendMessage(chat_id, animes.join('\n'), {
+                            parse_mode: 'HTML',
+                            disable_web_page_preview: true
+                        })
                     } else {
                         return this.tgbot.sendMessage(chat_id, '没有结果')
                     }
@@ -391,8 +394,9 @@ class Subscribe {
             // debug(objs)
             let animes = [];
             for (let anime of objs) {
+                let match = Utils.IsTitleMatch(anime.title, wrapper.keywords);
                 let eps = Utils.ParseEpisode(anime.title);
-                if (eps.ep.indexOf(wrapper.ep) > -1) {
+                if (match && eps.ep.indexOf(wrapper.ep) > -1) {
                     let str = `${dateFormat(anime.date, 'mm/dd HH:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`;
                     animes.push({text: str, data: anime})
                 }
