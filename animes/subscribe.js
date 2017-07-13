@@ -11,7 +11,8 @@ class Subscribe {
         this.tgbot = tgbot;
         this.db = db;
         this.botname = botname;
-        this.op()
+        this.lastupdate = 0;
+        this.op();
     }
 
     op() {
@@ -458,6 +459,7 @@ class Subscribe {
                     }
                 }
             }
+            self.lastupdate = new Date().getTime();
         })
     }
 
@@ -466,7 +468,7 @@ class Subscribe {
         this.updateLoop(this);
         setInterval(() => {
             this.updateLoop(this)
-        }, 60 * 60 * 1000) // 1小时
+        }, 60 * 60 * 1000); // 1小时
     }
 
     // fetch anime end
