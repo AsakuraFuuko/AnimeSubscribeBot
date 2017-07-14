@@ -59,6 +59,7 @@ typings/
 
 .vscode
 .idea
+*.iml
 config.yaml
 config.json
 package-lock.json

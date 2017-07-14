@@ -39,6 +39,7 @@ if (isLocal) {
 let botname = '@bot_name';
 const url = process.env.APP_URL;
 const tgbot = new TelegramBot(TOKEN);
+let sub;
 
 if (isLocal) {
     tgbot.setWebHook(`${url}/bot${TOKEN}`, {
@@ -50,7 +51,7 @@ if (isLocal) {
 
 tgbot.getMe().then((msg) => {
     botname = '@' + msg.username;
-    const sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB}, botname);
+    sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB}, botname);
     sub.startloop();
 });
 
@@ -79,6 +80,10 @@ app.delete('/episode/:id', (req, res) => {
     EpisodesDB.deleteEpisode(req.params.id).then((result) => {
         res.json({status: result})
     })
+});
+
+app.get('/lastupdate', (req, res) => {
+    res.json({status: true, result: sub.lastupdate})
 });
 
 if (isLocal) {
