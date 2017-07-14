@@ -80,8 +80,11 @@ class Subscribe {
                     let animes = [];
                     for (let i = 0; i < Math.min(objs.length, 10); i++) {
                         let anime = objs[i];
-                        let str = `${dateFormat(anime.date, 'mm/dd HH:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`;
-                        animes.push(str)
+                        let match = Utils.IsTitleMatch(anime.title, args);
+                        if (match) {
+                            let str = `${dateFormat(anime.date, 'mm/dd HH:MM')} <code>${anime.category}</code> <a href="${anime.torrent}">${anime.title}</a> <a href="${anime.url}">[DMHY]</a>`;
+                            animes.push(str)
+                        }
                     }
                     if (animes.length > 0) {
                         return this.tgbot.sendMessage(chat_id, animes.join('\n'), {
