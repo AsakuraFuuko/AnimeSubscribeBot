@@ -38,6 +38,7 @@
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
     "rss-parser": "^2.10.1",
-    "time-uuid": "^1.0.0"
+    "time-uuid": "^1.0.0",
+    "uax11": "0.0.3"
   }
 }
