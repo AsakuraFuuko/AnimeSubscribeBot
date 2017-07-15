@@ -35,6 +35,9 @@ class Anime {
                         result.category = obj.categories[0]._;
                         result.url = obj.link;
                         result.date = obj.pubDate;
+                        if (!result.magnet) {
+                            continue;
+                        }
                         result.torrent = `https://dl.dmhy.org/${dateFormat(new Date(obj.pubDate), 'yyyy/mm/dd')}/${Anime._btih_base32_to_hex(result.magnet.substr('magnet:?xt=urn:btih:'.length, 32))}.torrent`;
                         results.push(result)
                     }
