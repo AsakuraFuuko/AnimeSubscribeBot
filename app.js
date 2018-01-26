@@ -41,15 +41,19 @@ const url = process.env.APP_URL;
 const tgbot = new TelegramBot(TOKEN);
 let sub;
 
-if (isLocal) {
-    tgbot.setWebHook(`${url}/bot${TOKEN}`, {
-        certificate: `${__dirname}/cert.pem`,
-    });
-} else {
-    tgbot.setWebHook(`${url}/bot${TOKEN}`);
-}
+// if (isLocal) {
+//     tgbot.setWebHook(`${url}/bot${TOKEN}`, {
+//         certificate: `${__dirname}/cert.pem`,
+//     });
+// } else {
+tgbot.setWebHook(`${url}/bot${TOKEN}`);
+// }
 
 tgbot.getMe().then((msg) => {
+    tgbot.getWebHookInfo().then((res) => {
+        debug(JSON.stringify(res))
+    });
+
     botname = '@' + msg.username;
     sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB}, botname);
     sub.startloop();
