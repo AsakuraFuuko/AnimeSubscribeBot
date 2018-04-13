@@ -21,6 +21,7 @@ class Subscribe {
         // other start
         this.tgbot.onText(/\/start(@\w+)?(?: )?(.*)/, (msg, match) => {
             let user_id = msg.from.id;
+            let {username, first_name, last_name} = msg.from;
             let chat_id = msg.chat.id;
             let bot_name = match[1];
             if (bot_name && bot_name !== this.botname) {
@@ -30,7 +31,7 @@ class Subscribe {
             debug(args);
 
             log('start', msg.from);
-            this.db.users.setNotification(parseInt(user_id), true);
+            this.db.users.setNotification(parseInt(user_id), first_name, last_name, username, true);
             return this.tgbot.sendMessage(chat_id, '管理订阅 /anime \n[/anime 关键字]可以搜索动画')
         });
 
@@ -48,6 +49,7 @@ class Subscribe {
 
         this.tgbot.onText(/\/token(@\w+)?(?: )?(.*)/, (msg, match) => {
             let user_id = msg.from.id;
+            let {username, first_name, last_name} = msg.from;
             let chat_id = msg.chat.id;
             let bot_name = match[1];
             if (bot_name && bot_name !== this.botname) {
@@ -60,7 +62,15 @@ class Subscribe {
                 return this.tgbot.sendMessage(chat_id, '私聊可用')
             } else {
                 return this.db.users.getTokenByUserID(user_id).then((token) => {
-                    return this.tgbot.sendMessage(chat_id, `你的token是: ${token}`)
+                    if (!!token) {
+                        return this.tgbot.sendMessage(chat_id, `你的token是: ${token}`)
+                    } else {
+                        return this.db.users.setNotification(parseInt(user_id), first_name, last_name, username, true).then(_ => {
+                            return this.db.users.getTokenByUserID(user_id).then((token) => {
+                                return this.tgbot.sendMessage(chat_id, `你的token是: ${token}`)
+                            })
+                        })
+                    }
                 })
             }
         });
@@ -68,6 +78,7 @@ class Subscribe {
 
         this.tgbot.onText(/\/anime(@\w+)?(?: )?(.*)/, (msg, match) => {
             let chat_id = msg.chat.id;
+            let {username, first_name, last_name} = msg.from;
             let bot_name = match[1];
             if (bot_name && bot_name !== this.botname) {
                 return;
@@ -100,11 +111,12 @@ class Subscribe {
                 if (msg.chat.type !== 'private') {
                     return this.tgbot.sendMessage(chat_id, '请输入关键字，订阅管理私聊可用')
                 } else {
+                    this.db.users.setNotification(parseInt(user_id), first_name, last_name, username);
                     fetchAnimes({
                         user_id: msg.from.id,
                         chat_id,
                         msg_id: msg.message_id,
-                        user_name: (msg.from.last_name ? msg.from.last_name : '') + msg.from.first_name
+                        user_name: (last_name ? last_name : '') + first_name
                     })
                 }
             }
