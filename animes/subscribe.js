@@ -77,6 +77,7 @@ class Subscribe {
         // other end
 
         this.tgbot.onText(/\/anime(@\w+)?(?: )?(.*)/, (msg, match) => {
+            let user_id = msg.from.id;
             let chat_id = msg.chat.id;
             let {username, first_name, last_name} = msg.from;
             let bot_name = match[1];
