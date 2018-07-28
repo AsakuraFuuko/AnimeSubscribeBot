@@ -10,31 +10,20 @@ const log = require('./lib/logger');
 
 const Subscribe = require('./animes/subscribe');
 
-let UsersDB, AnimesDB, EpisodesDB;
+let UsersDB, AnimesDB, EpisodesDB, SettingsDB;
 let isLocal = process.env.LOCAL === 'true';
 console.log('isLocal =', isLocal);
 
-if (isLocal) {
-    AnimesDB = new (require('./lib/db/animes'))();
-    UsersDB = new (require('./lib/db/users'))();
-    EpisodesDB = new (require('./lib/db/episodes'))();
-} else {
-    // AnimesDB = new (require('./lib/db/pg/animes'))();
-    // UsersDB = new (require('./lib/db/pg/users'))();
-    // EpisodesDB = new (require('./lib/db/pg/episodes'))();
-    AnimesDB = new (require('./lib/db/mongo/animes'))();
-    UsersDB = new (require('./lib/db/mongo/users'))();
-    EpisodesDB = new (require('./lib/db/mongo/episodes'))();
-}
+// AnimesDB = new (require('./lib/db/pg/animes'))();
+// UsersDB = new (require('./lib/db/pg/users'))();
+// EpisodesDB = new (require('./lib/db/pg/episodes'))();
+AnimesDB = new (require('./lib/db/mongo/animes'))();
+UsersDB = new (require('./lib/db/mongo/users'))();
+EpisodesDB = new (require('./lib/db/mongo/episodes'))();
+SettingsDB = new (require('./lib/db/mongo/settings'))();
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const PORT = process.env.PORT || 5000;
-const options = {};
-
-if (isLocal) {
-    options.key = fs.readFileSync(`${__dirname}/private.key`);  // Path to file with PEM private key
-    options.cert = fs.readFileSync(`${__dirname}/cert.pem`)  // Path to file with PEM certificate
-}
 
 let botname = '@bot_name';
 const url = process.env.APP_URL;
@@ -55,7 +44,7 @@ tgbot.getMe().then((msg) => {
     });
 
     botname = '@' + msg.username;
-    sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB}, botname);
+    sub = new Subscribe(tgbot, {animes: AnimesDB, users: UsersDB, episodes: EpisodesDB, settings: SettingsDB}, botname);
     sub.startloop();
 });
 
@@ -91,8 +80,11 @@ app.get('/lastupdate', (req, res) => {
 });
 
 if (isLocal) {
-    https.createServer(options, app).listen(PORT, '0.0.0.0', null, function () {
-        log(`Server listening on port ${this.address().port} in ${app.settings.env} mode`);
+    https.createServer({
+        key: fs.readFileSync(`${__dirname}/private.key`),
+        cert: fs.readFileSync(`${__dirname}/cert.pem`)
+    }, app).listen(PORT, '0.0.0.0', null, function () {
+        console.log(`Server listening on port ${this.address().port} in ${app.settings.env} mode`);
     });
 } else {
     app.listen(PORT, () => {

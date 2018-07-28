@@ -44,7 +44,7 @@ class Subscribe {
             let args = match[2];
             debug(args);
 
-            return this.tgbot.sendMessage(chat_id, msg.update.message)
+            return this.tgbot.sendMessage(chat_id, JSON.stringify(msg.from))
         });
 
         this.tgbot.onText(/\/token(@\w+)?(?: )?(.*)/, (msg, match) => {
@@ -74,9 +74,39 @@ class Subscribe {
                 })
             }
         });
+
+        this.tgbot.onText(/\/whitelist(@\w+)?(?: )?(.*)/, (msg, match) => {
+            let user_id = msg.from.id;
+            let {username, first_name, last_name} = msg.from;
+            let chat_id = msg.chat.id;
+            let bot_name = match[1];
+            if (bot_name && bot_name !== this.botname) {
+                return;
+            }
+            let args = match[2].split(' ');
+            debug(args);
+
+            if (msg.chat.type === 'private') {
+                if (args.length > 1 && (args[0] === 'add' || args[0] === 'remove')) {
+                    let userid = args[1];
+                    if (args[0] === 'add') {
+                        return this.db.settings.addUserToWhiteList(userid).then(result => {
+                            return this.tgbot.sendMessage(chat_id, result.toString())
+                        })
+                    } else if (args[0] === 'remove') {
+                        return this.db.settings.removeUserFromWhiteList(userid).then(result => {
+                            return this.tgbot.sendMessage(chat_id, result.toString())
+                        })
+                    }
+
+                } else {
+                    return this.tgbot.sendMessage(chat_id, '/whitelist add user_id or whitelist remove user_id')
+                }
+            }
+        });
         // other end
 
-        this.tgbot.onText(/\/anime(@\w+)?(?: )?(.*)/, (msg, match) => {
+        this.tgbot.onText(/\/anime(@\w+)?(?: )?(.*)/, async (msg, match) => {
             let user_id = msg.from.id;
             let chat_id = msg.chat.id;
             let {username, first_name, last_name} = msg.from;
@@ -112,13 +142,17 @@ class Subscribe {
                 if (msg.chat.type !== 'private') {
                     return this.tgbot.sendMessage(chat_id, '请输入关键字，订阅管理私聊可用')
                 } else {
-                    this.db.users.setNotification(parseInt(user_id), first_name, last_name, username);
-                    fetchAnimes({
-                        user_id: msg.from.id,
-                        chat_id,
-                        msg_id: msg.message_id,
-                        user_name: (last_name ? last_name : '') + first_name
-                    })
+                    if (await this.db.settings.hasUserFromWhiteList(user_id)) {
+                        this.db.users.setNotification(parseInt(user_id), first_name, last_name, username);
+                        fetchAnimes({
+                            user_id: msg.from.id,
+                            chat_id,
+                            msg_id: msg.message_id,
+                            user_name: (last_name ? last_name : '') + first_name
+                        })
+                    } else {
+                        return this.tgbot.sendMessage(chat_id, 'Access denied')
+                    }
                 }
             }
         });
@@ -177,34 +211,38 @@ class Subscribe {
             }
         }
 
-        function animeAddHandle(opts) {
+        async function animeAddHandle(opts) {
             let {chat_id, user_id, msg_id} = opts;
             let anime = {};
-            return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
-                return self.tgbot.sendMessage(chat_id, '请输入动画的名字(例：从零开始的魔法书)', {
-                    reply_markup: {
-                        force_reply: true
-                    }
-                }).then((sended) => {
-                    return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
-                        if (replyMessage && replyMessage.text.trim()) {
-                            anime.title = replyMessage.text.trim();
-                            return self.tgbot.sendMessage(chat_id, '请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720 mp4)', {
-                                reply_markup: {
-                                    force_reply: true
-                                }
-                            }).then((sended) => {
-                                return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
-                                    if (replyMessage && replyMessage.text.trim()) {
-                                        anime.keywords = replyMessage.text.trim();
-                                        self.db.animes.addAnime(user_id, anime.title, anime.keywords).then((res) => fetchAnimes(opts))
-                                    }
-                                });
-                            })
+            if (await self.db.settings.hasUserFromWhiteList(user_id)) {
+                return self.tgbot.deleteMessage(chat_id, msg_id).then(() => {
+                    return self.tgbot.sendMessage(chat_id, '请输入动画的名字(例：从零开始的魔法书)', {
+                        reply_markup: {
+                            force_reply: true
                         }
-                    });
+                    }).then((sended) => {
+                        return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                            if (replyMessage && replyMessage.text.trim()) {
+                                anime.title = replyMessage.text.trim();
+                                return self.tgbot.sendMessage(chat_id, '请输入动画的关键字(例：从零开始的魔法书 時雨初空 简 720 mp4)', {
+                                    reply_markup: {
+                                        force_reply: true
+                                    }
+                                }).then((sended) => {
+                                    return self.tgbot.onReplyToMessage(chat_id, sended.message_id, (replyMessage) => {
+                                        if (replyMessage && replyMessage.text.trim()) {
+                                            anime.keywords = replyMessage.text.trim();
+                                            self.db.animes.addAnime(user_id, anime.title, anime.keywords).then((res) => fetchAnimes(opts))
+                                        }
+                                    });
+                                })
+                            }
+                        });
+                    })
                 })
-            })
+            } else {
+                return self.tgbot.answerCallbackQuery(opts.callback_id, 'Access denied', true);
+            }
         }
 
         function animeEditMenuHandle(opts) {
