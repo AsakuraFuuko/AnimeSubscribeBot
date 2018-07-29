@@ -75,7 +75,7 @@ class Subscribe {
             }
         });
 
-        this.tgbot.onText(/\/whitelist(@\w+)?(?: )?(.*)/, (msg, match) => {
+        this.tgbot.onText(/\/whitelist(@\w+)?(?: )?(.*)/, async (msg, match) => {
             let user_id = msg.from.id;
             let {username, first_name, last_name} = msg.from;
             let chat_id = msg.chat.id;
@@ -86,7 +86,7 @@ class Subscribe {
             let args = match[2].split(' ');
             debug(args);
 
-            if (msg.chat.type === 'private') {
+            if (msg.chat.type === 'private' && user_id === await this.db.settings.getSetting('admin')) {
                 if (args.length > 1 && (args[0] === 'add' || args[0] === 'remove')) {
                     let userid = args[1];
                     if (args[0] === 'add') {
@@ -98,7 +98,6 @@ class Subscribe {
                             return this.tgbot.sendMessage(chat_id, result.toString())
                         })
                     }
-
                 } else {
                     return this.tgbot.sendMessage(chat_id, '/whitelist add user_id or whitelist remove user_id')
                 }
